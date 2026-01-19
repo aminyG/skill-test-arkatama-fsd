@@ -31,18 +31,7 @@ class CheckupController extends Controller
     /**
      * Store a newly created resource in storage.
      */
-    // public function store(Request $request)
-    // {
-    //     $request->validate([
-    //         'pet_id' => 'required',
-    //         'treatment_id' => 'required',
-    //         'checkup_date' => 'required|date'
-    //     ]);
 
-    //     Checkup::create($request->all());
-
-    //     return redirect()->route('checkups.index');
-    // }
     public function store(Request $request)
     {
         $request->validate([
@@ -87,7 +76,10 @@ class CheckupController extends Controller
      */
     public function edit(string $id)
     {
-        //
+        $checkup = Checkup::findOrFail($id);
+        $pets = Pet::all();
+        $treatments = Treatment::all();
+        return view('checkups.edit', compact('checkup','pets','treatments'));
     }
 
     /**
@@ -95,7 +87,16 @@ class CheckupController extends Controller
      */
     public function update(Request $request, string $id)
     {
-        //
+        $request->validate([
+            'pet_id' => 'required',
+            'treatment_id' => 'required',
+            'checkup_date' => 'required|date'
+        ]);
+
+        $checkup = Checkup::findOrFail($id);
+        $checkup->update($request->all());
+
+        return redirect()->route('checkups.index')->with('success','Data pemeriksaan diperbarui');
     }
 
     /**
@@ -103,6 +104,7 @@ class CheckupController extends Controller
      */
     public function destroy(string $id)
     {
-        //
+        Checkup::findOrFail($id)->delete();
+        return redirect()->route('checkups.index')->with('success','Data pemeriksaan dihapus');
     }
 }

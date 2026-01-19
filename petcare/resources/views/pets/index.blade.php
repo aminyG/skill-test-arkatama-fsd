@@ -13,6 +13,7 @@
             <th>Usia</th>
             <th>Berat (kg)</th>
             <th>Pemilik</th>
+            <th>Aksi</th>
         </tr>
         @foreach($pets as $p)
         <tr>
@@ -22,6 +23,15 @@
             <td>{{ $p->age }}</td>
             <td>{{ $p->weight }}</td>
             <td>{{ $p->owner->name }}</td>
+            <td>
+                <a href="{{ route('pets.edit', $p->id) }}" class="btn btn-warning btn-sm">Edit</a>
+
+                <form action="{{ route('pets.destroy', $p->id) }}" method="POST" class="d-inline">
+                    @csrf
+                    @method('DELETE')
+                    <button class="btn btn-danger btn-sm" onclick="return confirm('Yakin hapus?')">Hapus</button>
+                </form>
+            </td>
         </tr>
         @endforeach
     </table>

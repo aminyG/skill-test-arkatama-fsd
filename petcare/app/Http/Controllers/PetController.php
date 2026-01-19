@@ -8,6 +8,43 @@ use App\Models\Pet;
 
 class PetController extends Controller
 {
+    private function parsePetInput($raw)
+    {
+        $raw = trim(preg_replace('/\s+/', ' ', $raw));
+        $parts = explode(' ', $raw);
+
+        if (count($parts) < 4) {
+            return null;
+        }
+
+        $name = $parts[0];
+        $species = $parts[1];
+
+        $agePart = $parts[2];
+        $weightPart = $parts[3];
+
+        if (!preg_match('/(\d+)/', $agePart, $ageMatch)) {
+            return null;
+        }
+        $age = (int)$ageMatch[1];
+
+        $weight = strtolower($weightPart);
+        $weight = str_replace(['kg', ' '], '', $weight);
+        $weight = str_replace(',', '.', $weight);
+
+        if (!is_numeric($weight)) {
+            return null;
+        }
+
+        return [
+            'name' => $name,
+            'species' => $species,
+            'age' => $age,
+            'weight' => (float)$weight
+        ];
+    }
+
+
     /**
      * Display a listing of the resource.
      */
@@ -36,34 +73,15 @@ class PetController extends Controller
             'owner_id' => 'required|exists:owners,id'
         ]);
 
-        $raw = trim(preg_replace('/\s+/', ' ', $request->raw_input));
-        $parts = explode(' ', $raw);
-
-        if (count($parts) < 4) {
-            return back()->withErrors(['Format input tidak sesuai. Gunakan: Nama Jenis Usia Berat']);
+        $result = $this->parsePetInput($request->raw_input);
+        if (!$result) {
+            return back()->withErrors(['Format input tidak valid. Gunakan: Nama Jenis Usia Berat']);
         }
 
-        $name = strtoupper($parts[0]);
-        $species = strtoupper($parts[1]);
-
-        $ageRaw = $parts[2];
-        $weightRaw = $parts[3];
-
-        if (!preg_match('/(\d+)/', $ageRaw, $ageMatch)) {
-            return back()->withErrors(['Format usia tidak valid']);
-        }
-        $age = (int) $ageMatch[1];
-
-
-        $weightClean = strtolower($weightRaw);
-        $weightClean = str_replace(['kg', ' '], '', $weightClean);
-        $weightClean = str_replace(',', '.', $weightClean);
-
-        if (!is_numeric($weightClean)) {
-            return back()->withErrors(['Format berat tidak valid']);
-        }
-        $weight = (float) $weightClean;
-
+        $name = strtoupper($result['name']);
+        $species = strtoupper($result['species']);
+        $age = $result['age'];
+        $weight = $result['weight'];
 
         $exists = Pet::where('owner_id', $request->owner_id)
             ->where('name', $name)
@@ -74,16 +92,12 @@ class PetController extends Controller
             return back()->withErrors(['Hewan dengan nama dan jenis yang sama sudah ada untuk pemilik ini']);
         }
 
-
-        $time = now()->format('Hi'); // HHMM
+        $time = now()->format('Hi');
         $ownerId = str_pad($request->owner_id, 4, '0', STR_PAD_LEFT);
-
-        $lastNumber = Pet::count() + 1;
-        $sequence = str_pad($lastNumber, 4, '0', STR_PAD_LEFT);
+        $sequence = str_pad(Pet::where('owner_id', $request->owner_id)->count() + 1, 4, '0', STR_PAD_LEFT);
 
         $code = $time . $ownerId . $sequence;
 
-        
         Pet::create([
             'owner_id' => $request->owner_id,
             'code' => $code,
@@ -95,6 +109,7 @@ class PetController extends Controller
 
         return redirect()->route('pets.index')->with('success', 'Data hewan berhasil disimpan');
     }
+
 
     /**
      * Display the specified resource.
@@ -109,7 +124,9 @@ class PetController extends Controller
      */
     public function edit(string $id)
     {
-        //
+        $pet = Pet::findOrFail($id);
+        $owners = Owner::where('phone_verified', 1)->get();
+        return view('pets.edit', compact('pet','owners'));
     }
 
     /**
@@ -117,7 +134,27 @@ class PetController extends Controller
      */
     public function update(Request $request, string $id)
     {
-        //
+         $request->validate([
+            'raw_input' => 'required',
+            'owner_id' => 'required'
+        ]);
+
+        $result = $this->parsePetInput($request->raw_input);
+        if (!$result) {
+            return back()->withErrors(['Format input tidak valid. Gunakan: Nama Jenis Usia Berat']);
+        }
+
+
+        $pet = Pet::findOrFail($id);
+        $pet->update([
+            'name' => strtoupper($result['name']),
+            'species' => strtoupper($result['species']),
+            'age'  => $result['age'],
+            'weight' => $result['weight'],
+            'owner_id' => $request->owner_id
+        ]);
+
+        return redirect()->route('pets.index')->with('success','Data hewan berhasil diupdate');
     }
 
     /**
@@ -125,6 +162,7 @@ class PetController extends Controller
      */
     public function destroy(string $id)
     {
-        //
+        Pet::findOrFail($id)->delete();
+        return redirect()->route('pets.index')->with('success','Data hewan berhasil dihapus');
     }
 }

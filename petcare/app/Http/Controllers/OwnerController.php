@@ -56,7 +56,8 @@ class OwnerController extends Controller
      */
     public function edit(string $id)
     {
-        //
+        $owner = Owner::findOrFail($id);
+        return view('owners.edit', compact('owner'));
     }
 
     /**
@@ -64,7 +65,19 @@ class OwnerController extends Controller
      */
     public function update(Request $request, string $id)
     {
-        //
+        $request->validate([
+            'name' => 'required',
+            'phone' => 'required',
+        ]);
+
+        $owner = Owner::findOrFail($id);
+        $owner->update([
+            'name' => $request->name,
+            'phone' => $request->phone,
+            'phone_verified' => $request->has('phone_verified')
+        ]);
+
+        return redirect()->route('owners.index')->with('success', 'Owner berhasil diupdate');
     }
 
     /**
@@ -72,6 +85,7 @@ class OwnerController extends Controller
      */
     public function destroy(string $id)
     {
-        //
+        Owner::findOrFail($id)->delete();
+        return redirect()->route('owners.index')->with('success','Owner berhasil dihapus');
     }
 }
